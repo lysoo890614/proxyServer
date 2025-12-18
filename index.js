@@ -1,11 +1,32 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
 dotenv.config();
 
+// HTTPS 옵션 설정 (자체 서명 인증서)
+let httpsOptions = null;
+if (process.env.SSL_CERT_PATH && process.env.SSL_KEY_PATH) {
+  try {
+    httpsOptions = {
+      key: fs.readFileSync(process.env.SSL_KEY_PATH),
+      cert: fs.readFileSync(process.env.SSL_CERT_PATH),
+    };
+    console.log('✅ SSL 인증서 로드 완료');
+  } catch (error) {
+    console.error('❌ SSL 인증서 로드 실패:', error.message);
+    console.error('인증서 경로를 확인하세요:', {
+      cert: process.env.SSL_CERT_PATH,
+      key: process.env.SSL_KEY_PATH
+    });
+    process.exit(1);
+  }
+}
+
 const fastify = Fastify({
   logger: true,
+  https: httpsOptions,
 });
 
 // CORS 설정 (브라우저 요청 지원)
@@ -145,11 +166,12 @@ fastify.route({
 // 서버 시작
 const start = async () => {
   try {
-    const port = parseInt(process.env.PORT || '3000', 10);
+    const port = parseInt(process.env.PORT || '443', 10);
     const host = process.env.HOST || '0.0.0.0';
     
     await fastify.listen({ port, host });
-    fastify.log.info(`Proxy server listening on ${host}:${port}`);
+    const protocol = httpsOptions ? 'HTTPS' : 'HTTP';
+    fastify.log.info(`${protocol} Proxy server listening on ${host}:${port}`);
     fastify.log.info(`Proxying to LLM server: ${LLM_SERVER_URL}`);
   } catch (err) {
     fastify.log.error(err);
