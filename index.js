@@ -27,8 +27,11 @@ fastify.get('/health', async (request, reply) => {
   };
 });
 
-// 모든 경로에 대한 프록시 핸들러
-fastify.all('/*', async (request, reply) => {
+// 모든 경로에 대한 프록시 핸들러 (OPTIONS는 CORS 플러그인이 처리하므로 제외)
+fastify.route({
+  method: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD'],
+  url: '/*',
+  handler: async (request, reply) => {
   const { method, url, headers, body } = request;
   
   // 원본 요청 경로와 쿼리 파라미터 유지
@@ -135,6 +138,7 @@ fastify.all('/*', async (request, reply) => {
       error: 'Proxy request failed',
       message: error.message 
     });
+  }
   }
 });
 
